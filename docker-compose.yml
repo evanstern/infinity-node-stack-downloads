@@ -1,0 +1,59 @@
+name: downloads
+services:
+  nzbget:
+    image: lscr.io/linuxserver/nzbget:latest
+    container_name: nzbget
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - NZBGET_USER=${NZBGET_USER}
+      - NZBGET_PASS=${NZBGET_PASS}
+    volumes:
+      - ${STACKS_PATH}/downloads/nzbget:/config
+      - ${INCOMPLETE_PATH}:/incomplete
+      - ${COMPLETE_PATH}:/downloads
+    network_mode: container:vpn
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 16g
+
+  deluge:
+    container_name: deluge
+    network_mode: container:vpn
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DELUGE_LOGLEVEL=error
+    volumes:
+      - ${STACKS_PATH}/downloads/deluge:/config
+      - ${INCOMPLETE_PATH}:/incomplete
+      - ${COMPLETE_PATH}:/complete
+    restart: unless-stopped
+    depends_on:
+      nordlynx:
+        condition: service_started
+        restart: true
+    image: ghcr.io/linuxserver/deluge:latest
+
+  nordlynx:
+    container_name: vpn
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    dns:
+      - 1.1.1.1
+    ports:
+      - 8112:8112
+      - 6881:6881
+      - 6881:6881/udp
+      - 6789:6789
+    environment:
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - NET_LOCAL=${NET_LOCAL}
+    restart: unless-stopped
+    image: ghcr.io/bubuntux/nordlynx
